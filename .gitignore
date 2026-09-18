@@ -56,3 +56,5 @@ certs/*
 nginx/*.pem
 nginx/*.crt
 nginx/*.key
+
+dist/

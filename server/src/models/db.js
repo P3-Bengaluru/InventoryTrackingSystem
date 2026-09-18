@@ -4,11 +4,11 @@ require('dotenv').config();
 const config = {
   client: 'pg',
   connection: {
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432', 10),
-    database: process.env.DB_NAME || 'inventory_db',
-    user: process.env.DB_USER || 'its_user',
-    password: process.env.DB_PASSWORD || 'change_me',
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT, 10),
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
   },
   pool: { min: 2, max: 10 },
   migrations: {

@@ -26,7 +26,7 @@ docker compose exec api npx knex seed:run
 | Service  | Port | Description                       |
 |----------|------|-----------------------------------|
 | nginx    | 80/443 | Reverse proxy + TLS              |
-| client  | 8080  | React SPA (Vite build)           |
+| client  | 5173  | React SPA (Vite build)           |
 | api     | 3001  | Express REST API                 |
 | postgres| 5432  | PostgreSQL 16 database           |
 
