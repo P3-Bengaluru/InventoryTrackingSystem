@@ -15,6 +15,20 @@ const STATUS_LABELS = {
 
 const VALID_STATUSES = ['available', 'assigned', 'maintenance', 'retired', 'lost', 'disposed', 'in_transit'];
 
+async function getLocationFullPath(locationId) {
+  if (!locationId) return null;
+  const parts = [];
+  let current = await db('locations').where({ id: locationId }).first();
+  while (current) {
+    parts.unshift(current.name);
+    if (!current.parent_id) break;
+    // fetch parent
+    // eslint-disable-next-line no-await-in-loop
+    current = await db('locations').where({ id: current.parent_id }).first();
+  }
+  return parts.length ? parts.join(' / ') : null;
+}
+
 function buildAssetQuery(filters = {}) {
   const query = db('assets')
     .select(
@@ -22,7 +36,6 @@ function buildAssetQuery(filters = {}) {
       'categories.name as category_name',
       'categories.asset_prefix as category_prefix',
       'categories.type as category_type',
-      'l_full.full_path as location_path',
       'l.name as location_name',
       'u.name as assigned_to_name',
       'u.employee_id as assigned_to_emp_id',
@@ -32,7 +45,6 @@ function buildAssetQuery(filters = {}) {
     )
     .leftJoin('categories', 'assets.category_id', 'categories.id')
     .leftJoin('locations as l', 'assets.location_id', 'l.id')
-    .leftJoin('location_full_path as l_full', 'assets.location_id', 'l_full.id')
     .leftJoin('users as u', 'assets.assigned_to', 'u.id')
     .leftJoin('suppliers as s', 'assets.supplier_id', 's.id')
     .leftJoin('customers as c', 'assets.customer_id', 'c.id')
@@ -68,7 +80,12 @@ function buildAssetQuery(filters = {}) {
 }
 
 async function getAll(filters = {}) {
-  return buildAssetQuery(filters);
+  const rows = await buildAssetQuery(filters);
+  for (const r of rows) {
+    // eslint-disable-next-line no-await-in-loop
+    r.location_path = await getLocationFullPath(r.location_id);
+  }
+  return rows;
 }
 
 async function getById(id) {
@@ -78,7 +95,6 @@ async function getById(id) {
       'categories.name as category_name',
       'categories.asset_prefix as category_prefix',
       'categories.type as category_type',
-      'l_full.full_path as location_path',
       'l.name as location_name',
       'u.name as assigned_to_name',
       'u.employee_id as assigned_to_emp_id',
@@ -89,13 +105,13 @@ async function getById(id) {
     )
     .leftJoin('categories', 'assets.category_id', 'categories.id')
     .leftJoin('locations as l', 'assets.location_id', 'l.id')
-    .leftJoin('location_full_path as l_full', 'assets.location_id', 'l_full.id')
     .leftJoin('users as u', 'assets.assigned_to', 'u.id')
     .leftJoin('suppliers as s', 'assets.supplier_id', 's.id')
     .leftJoin('customers as c', 'assets.customer_id', 'c.id')
     .where({ 'assets.id': id })
     .first();
   if (!asset) throw new AppError('Asset not found', 404);
+  asset.location_path = await getLocationFullPath(asset.location_id);
   return asset;
 }
 
@@ -117,17 +133,16 @@ async function getByQrToken(token) {
       'assets.customer_reference',
       'assets.assigned_to',
       'categories.name as category_name',
-      'l_full.full_path as location_path',
       'u.name as assigned_to_name',
       'c.name as customer_name'
     )
     .leftJoin('categories', 'assets.category_id', 'categories.id')
-    .leftJoin('location_full_path as l_full', 'assets.location_id', 'l_full.id')
     .leftJoin('users as u', 'assets.assigned_to', 'u.id')
     .leftJoin('customers as c', 'assets.customer_id', 'c.id')
     .where({ 'assets.qr_token': token, 'assets.is_active': true })
     .first();
   if (!asset) throw new AppError('Asset not found', 404);
+  asset.location_path = await getLocationFullPath(asset.location_id);
   return asset;
 }
 
@@ -427,10 +442,10 @@ async function getMine(userId) {
       'assets.warranty_expiry',
       'assets.qr_token',
       'categories.name as category_name',
-      'l_full.full_path as location_path'
+      'l.name as location_name'
     )
     .leftJoin('categories', 'assets.category_id', 'categories.id')
-    .leftJoin('location_full_path as l_full', 'assets.location_id', 'l_full.id')
+    .leftJoin('locations as l', 'assets.location_id', 'l.id')
     .where({ 'assets.assigned_to': userId, 'assets.is_active': true })
     .orderBy('assets.name', 'asc');
 }

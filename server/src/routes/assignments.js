@@ -1,13 +1,16 @@
 const express = require('express');
 const { list, get, create, approve, reject, checkIn } = require('../controllers/assignmentController');
+const { authenticate, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
+router.use(authenticate);
+
 router.get('/', list);
 router.get('/:id', get);
-router.post('/', create);
-router.post('/:id/approve', approve);
-router.post('/:id/reject', reject);
-router.post('/:id/check-in', checkIn);
+router.post('/', authorize('admin', 'inventory_manager', 'manager', 'project_manager'), create);
+router.post('/:id/approve', authorize('admin', 'inventory_manager', 'manager', 'project_manager'), approve);
+router.post('/:id/reject', authorize('admin', 'inventory_manager', 'manager', 'project_manager'), reject);
+router.post('/:id/check-in', authorize('admin', 'inventory_manager', 'manager', 'project_manager', 'engineer'), checkIn);
 
 module.exports = router;

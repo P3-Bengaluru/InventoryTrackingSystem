@@ -3,7 +3,7 @@ const { AppError } = require('../middleware/errorHandler');
 const { hashPassword, comparePassword } = require('./authService');
 const { auditFromReq } = require('../utils/audit');
 
-async function getAll(filters = {}) {
+function getAll(filters = {}) {
   const query = db('users').select(
     'id',
     'employee_id',
