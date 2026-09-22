@@ -1,11 +1,11 @@
-import { Bell, Building2, ChevronDown, CircleHelp, LayoutDashboard, Menu, MoreHorizontal, Package, Settings, ShoppingCart, Truck, Users, MapPin, ClipboardList, GitBranch } from 'lucide-react';
+import { Bell, Building2, ChevronDown, CircleHelp, LayoutDashboard, Menu, MoreHorizontal, Package, Settings, ShoppingCart, Truck, Users, MapPin, ClipboardList, GitBranch, Layers } from 'lucide-react';
 import { useState } from 'react';
 
 const navGroups = [
   { label: 'Workspace', items: [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }] },
   { label: 'Inventory', items: [{ id: 'assets', label: 'Assets', icon: Package }, { id: 'assignments', label: 'Assignments', icon: ClipboardList }, { id: 'reallocations', label: 'Reallocations', icon: GitBranch }] },
-  { label: 'Operations', items: [{ id: 'procurement', label: 'Procurement', icon: ShoppingCart }, { id: 'suppliers', label: 'Suppliers', icon: Truck }, { id: 'customers', label: 'Customers', icon: Building2 }] },
-  { label: 'Organization', items: [{ id: 'users', label: 'People', icon: Users }, { id: 'locations', label: 'Locations', icon: MapPin }, { id: 'reports', label: 'Reports', icon: LayoutDashboard }] },
+  { label: 'Operations', items: [{ id: 'procurement', label: 'Procurement', icon: ShoppingCart }, { id: 'suppliers', label: 'Suppliers', icon: Truck }, ] },
+  { label: 'Organization', items: [{ id: 'users', label: 'People', icon: Users }, { id: 'categories', label: 'Categories', icon: Layers }, { id: 'locations', label: 'Locations', icon: MapPin }, { id: 'reports', label: 'Reports', icon: LayoutDashboard }] },
 ];
 
 export function Sidebar({ activeView, setActiveView, collapsed, setCollapsed, user, onLogout }) {
