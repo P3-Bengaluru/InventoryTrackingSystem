@@ -8,6 +8,9 @@ import WorkflowList from './pages/Workflow';
 import Procurement from './pages/Procurement';
 import Management from './pages/Management';
 import Reports from './pages/Reports';
+import People from './pages/People';
+import Categories from './pages/Categories';
+import Locations from './pages/Location';
 import { ClipboardList } from 'lucide-react';
 import LoginView from './pages/LoginView';
 import { useAuth } from './context/AuthContext';
@@ -64,33 +67,9 @@ export default function App() {
       notify={notify}
       type="suppliers"
     />,
-    customers: <Management
-      title="Customers"
-      eyebrow="Operations / Customers"
-      description="Track assets received from customers without mixing them with purchased inventory."
-      icon={Building2}
-      onAdd={() => notify('Customer form opened.')}
-      notify={notify}
-      type="customers"
-    />,
-    users: <Management
-      title="People"
-      eyebrow="Organization / People"
-      description="Manage employees, roles, reporting lines, and approval limits."
-      icon={Users}
-      onAdd={() => notify('People form opened.')}
-      notify={notify}
-      type="users"
-    />,
-    locations: <Management
-      title="Locations"
-      eyebrow="Organization / Locations"
-      description="Organize assets across cities, departments, and projects."
-      icon={MapPin}
-      onAdd={() => notify('Location form opened.')}
-      notify={notify}
-      type="locations"
-    />,
+    categories:<Categories notify={notify} />,
+    users: <People notify={notify} />,
+    locations: <Locations notify={notify} />,
     reports: <Reports notify={notify} />,
     settings: <Management
       title="Settings"
