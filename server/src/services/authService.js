@@ -98,10 +98,6 @@ async function login(email, password, req) {
     ip_address: req.ip || null,
     user_agent: req.headers?.['user-agent'] || null,
     created_at: new Date(),
-    created_by: user.id,
-    updated_at: new Date(),
-    updated_by: user.id,
-    is_active: true,
   });
 
   await auditLog({
@@ -167,10 +163,6 @@ async function refresh(refreshToken, req) {
     ip_address: req.ip || null,
     user_agent: req.headers?.['user-agent'] || null,
     created_at: new Date(),
-    created_by: user.id,
-    updated_at: new Date(),
-    updated_by: user.id,
-    is_active: true,
   });
 
   return { accessToken: newAccessToken, refreshToken: newRefreshToken };
