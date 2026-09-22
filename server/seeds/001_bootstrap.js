@@ -86,37 +86,6 @@ exports.seed = async function (knex) {
     .onConflict(['name', 'parent_id'])
     .ignore();
 
-  // ── Locations ─────────────────────────────────────────────────────
-  await knex('locations')
-    .insert([
-      { name: 'Bangalore', level: 1, code: 'BLR' },
-      { name: 'Pune', level: 1, code: 'PNE' },
-    ])
-    .onConflict(['name', 'parent_id'])
-    .ignore();
-
-  const blr = await knex('locations').where({ name: 'Bangalore', parent_id: null }).first();
-  await knex('locations')
-    .insert([
-      { name: 'Engineering', parent_id: blr.id, level: 2, code: 'ENG-BLR' },
-      { name: 'Finance', parent_id: blr.id, level: 2, code: 'FIN-BLR' },
-      { name: 'HR', parent_id: blr.id, level: 2, code: 'HR-BLR' },
-      { name: 'Operations', parent_id: blr.id, level: 2, code: 'OPS-BLR' },
-      { name: 'Administration', parent_id: blr.id, level: 2, code: 'ADM-BLR' },
-    ])
-    .onConflict(['name', 'parent_id'])
-    .ignore();
-
-  const engBlr = await knex('locations').where({ name: 'Engineering', code: 'ENG-BLR' }).first();
-  await knex('locations')
-    .insert([
-      { name: 'Project Alpha', parent_id: engBlr.id, level: 3, code: 'PRJ-ALPHA' },
-      { name: 'Project Beta', parent_id: engBlr.id, level: 3, code: 'PRJ-BETA' },
-      { name: 'Common Area', parent_id: engBlr.id, level: 3, code: 'CMN-ENG-BLR' },
-    ])
-    .onConflict(['name', 'parent_id'])
-    .ignore();
-
   // ── Approval rules ────────────────────────────────────────────────
   const existingRules = await knex('approval_rules').count('id as count').first();
   if (Number(existingRules.count) === 0) {
