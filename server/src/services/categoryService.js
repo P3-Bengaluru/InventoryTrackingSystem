@@ -3,7 +3,7 @@ const { AppError } = require('../middleware/errorHandler');
 
 async function getTree() {
   const categories = await db('categories')
-    .select('id', 'name', 'parent_id', 'type', 'asset_prefix', 'description', 'sort_order', 'is_active', 'created_at')
+    .select('id', 'name', 'parent_id', 'type', 'description', 'sort_order', 'is_active', 'created_at')
     .orderBy('sort_order', 'asc')
     .orderBy('name', 'asc');
   return buildTree(categories, null);
@@ -35,7 +35,6 @@ async function create(data, req) {
       name: data.name,
       parent_id: data.parent_id || null,
       type: 'asset',
-      asset_prefix: data.asset_prefix || null,
       description: data.description || null,
       sort_order: data.sort_order || 0,
       is_active: true,

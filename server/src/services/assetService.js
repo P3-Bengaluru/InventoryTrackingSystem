@@ -34,7 +34,6 @@ function buildAssetQuery(filters = {}) {
     .select(
       'assets.*',
       'categories.name as category_name',
-      'categories.asset_prefix as category_prefix',
       'categories.type as category_type',
       'l.name as location_name',
       'u.name as assigned_to_name',
@@ -93,7 +92,6 @@ async function getById(id) {
     .select(
       'assets.*',
       'categories.name as category_name',
-      'categories.asset_prefix as category_prefix',
       'categories.type as category_type',
       'l.name as location_name',
       'u.name as assigned_to_name',
@@ -146,20 +144,6 @@ async function getByQrToken(token) {
   return asset;
 }
 
-async function getAssetPrefix(categoryId) {
-  const category = await db('categories').where({ id: categoryId }).first();
-  if (!category) throw new AppError('Category not found', 404);
-  if (category.asset_prefix) return category.asset_prefix;
-
-  let current = category;
-  while (current.parent_id) {
-    const parent = await db('categories').where({ id: current.parent_id }).first();
-    if (!parent) break;
-    if (parent.asset_prefix) return parent.asset_prefix;
-    current = parent;
-  }
-  throw new AppError('No asset_prefix found in category hierarchy', 400);
-}
 
 async function generateAssetNumber(prefix, trx) {
   const counter = await trx('asset_number_counters')
@@ -179,8 +163,6 @@ async function generateAssetNumber(prefix, trx) {
 }
 
 async function create(data, req) {
-  const prefix = await getAssetPrefix(data.category_id);
-
   const result = await db.transaction(async (trx) => {
     const assetNumber = await generateAssetNumber(prefix, trx);
 
@@ -463,7 +445,6 @@ module.exports = {
   getStats,
   rotateQrToken,
   getMine,
-  getAssetPrefix,
   generateAssetNumber,
   STATUS_LABELS,
   VALID_STATUSES,
