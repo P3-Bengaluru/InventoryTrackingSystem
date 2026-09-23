@@ -38,14 +38,14 @@ export default function LoginView() {
 
           {/* Logo */}
           <div className="login-brand">
-            {/* Replace this with your actual NexaDesk logo */}
+            {/* Replace this with your actual P3ITS logo */}
             <div className="login-logo">
-              ND
+              P3
             </div>
 
             <div className="login-brand-text">
               <span className="login-brand-name">
-                nexa<span>desk</span>
+                P3<span> ITS</span>
               </span>
 
               <span className="login-brand-subtitle">
@@ -59,7 +59,7 @@ export default function LoginView() {
             <h1>Welcome back</h1>
 
             <p>
-              Sign in to your NexaDesk account to continue.
+              Sign in to your P3-ITS account to continue.
             </p>
           </div>
 
@@ -266,7 +266,7 @@ export default function LoginView() {
 
           {/* Footer */}
           <div className="login-footer">
-            <span>nexadesk</span>
+            <span>P3-ITS</span>
             <span>•</span>
             <span>Inventory Management</span>
           </div>

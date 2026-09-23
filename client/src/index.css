@@ -11,7 +11,22 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .sidebar { width: 248px; position: fixed; inset: 0 auto 0 0; z-index: 20; display: flex; flex-direction: column; background: rgba(15, 23, 32, .96); border-right: 1px solid var(--line-soft); transition: width .2s ease; }
 .sidebar-collapsed { width: 76px; }
 .brand { height: 72px; padding: 0 18px; display: flex; align-items: center; gap: 11px; border-bottom: 1px solid var(--line-soft); }
-.brand-mark { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: #dcebff; background: linear-gradient(135deg, #4989ee, #2857a5); box-shadow: 0 8px 20px rgba(49, 108, 211, .25); }
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  color: inherit;
+  background: transparent;
+}
+
+.brand-mark:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
 .brand-name { display: flex; flex-direction: column; line-height: 1.05; min-width: 104px; }
 .brand-name strong { font-size: 16px; letter-spacing: -.04em; color: #f4f8ff; }
 .brand-name strong span { color: var(--accent); }
@@ -37,6 +52,43 @@ nav { flex: 1; padding: 10px 11px; overflow-y: auto; }
 .user-mini { margin-top: 14px; padding: 9px 7px; display: flex; align-items: center; gap: 9px; border-top: 1px solid var(--line-soft); }
 .user-mini .avatar { background: #214e82; }
 .user-mini button { margin-left: auto; }
+
+.user-menu {
+  overflow: hidden;
+  border: 1px solid #2a3948;
+  border-radius: 8px;
+  background: #121c27;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.user-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: transparent;
+}
+
+.user-menu-item {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #c7d2df;
+  background: transparent;
+  text-align: left;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.user-menu-item:last-child {
+  border-bottom: 0;
+}
+
+.user-menu-item:hover {
+  background: #1b2a39;
+  color: #ffffff;
+}
 
 .main { margin-left: 248px; min-height: 100vh; transition: margin-left .2s ease; }
 .main-expanded { margin-left: 76px; }
