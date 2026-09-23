@@ -11,6 +11,7 @@ import Reports from './pages/Reports';
 import People from './pages/People';
 import Categories from './pages/Categories';
 import Locations from './pages/Location';
+import Suppliers from './pages/Suppliers';
 import { ClipboardList } from 'lucide-react';
 import LoginView from './pages/LoginView';
 import { useAuth } from './context/AuthContext';
@@ -58,15 +59,7 @@ export default function App() {
       onAction={() => notify('Reallocation request form opened.')}
     />,
     procurement: <Procurement notify={notify} />,
-    suppliers: <Management
-      title="Suppliers"
-      eyebrow="Operations / Suppliers"
-      description="Keep purchasing contacts, terms, and vendor records current."
-      icon={Truck}
-      onAdd={() => notify('Supplier form opened.')}
-      notify={notify}
-      type="suppliers"
-    />,
+    suppliers:<Suppliers notify={notify} />,
     categories:<Categories notify={notify} />,
     users: <People notify={notify} />,
     locations: <Locations notify={notify} />,

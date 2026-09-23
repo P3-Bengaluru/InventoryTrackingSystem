@@ -1,7 +1,7 @@
 const { db } = require('../models/db');
 const { AppError } = require('../middleware/errorHandler');
 
-async function getAll(filters = {}) {
+function getAll(filters = {}) {
   const query = db('suppliers').select('*');
   if (filters.is_active !== undefined) query.where({ is_active: filters.is_active });
   if (filters.search) {

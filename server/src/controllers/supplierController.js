@@ -3,7 +3,7 @@ const { paginate } = require('../utils/paginate');
 const supplierService = require('../services/supplierService');
 
 const list = asyncHandler(async (req, res) => {
-  const query = await supplierService.getAll(req.query);
+  const query = supplierService.getAll(req.query);
   const result = await paginate(query, req);
   res.json(result);
 });
