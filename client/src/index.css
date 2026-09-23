@@ -127,7 +127,172 @@ h3 { color: #eef4fb; font-size: 14px; }
 .stat-copy span { color: #8595a6; font-size: 11px; }.stat-copy strong { margin-top: 8px; color: #f2f7fd; font-size: 25px; letter-spacing: -.04em; }.stat-copy small { margin-top: 4px; color: #7790a1; font-size: 10px; }
 .stat-arrow { position: absolute; right: 16px; top: 17px; color: #506276; }
 .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .8fr); gap: 16px; }.bottom-grid { grid-template-columns: minmax(0, 1.45fr) minmax(300px, .75fr); }
-.panel { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: rgba(17, 25, 35, .82); }.panel-heading { padding: 20px 20px 15px; display: flex; justify-content: space-between; align-items: flex-start; }.panel-heading select, .report-controls select, .form-grid select { border: 1px solid #2b3b4b; border-radius: 7px; outline: none; color: #adbac8; background: #16222e; font-size: 11px; }
+.panel { overflow: visible; border: 1px solid var(--line); border-radius: 12px; background: rgba(17, 25, 35, .82); }.panel-heading { padding: 20px 20px 15px; display: flex; justify-content: space-between; align-items: flex-start; }.panel-heading select, .report-controls select, .form-grid select { border: 1px solid #2b3b4b; border-radius: 7px; outline: none; color: #adbac8; background: #16222e; font-size: 11px; }
+/* =========================================================
+   Assets panel / toolbar overflow
+========================================================= */
+
+.asset-panel {
+  position: relative;
+  overflow: visible;
+}
+
+.asset-panel .toolbar {
+  position: relative;
+  z-index: 30;
+}
+
+.asset-panel .toolbar-actions {
+  position: relative;
+  z-index: 40;
+}
+
+.asset-panel .toolbar-menu-wrapper {
+  position: relative;
+}
+
+.asset-panel .toolbar-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1000;
+}
+
+/*
+ * Keep horizontal scrolling limited to the actual table.
+ * The filter popup is outside this element, so it won't
+ * be clipped by the table.
+ */
+.asset-panel .table-wrap {
+  position: relative;
+  z-index: 1;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+.asset-panel .filter-popover {
+  width: 340px;
+  max-height: min(620px, calc(100vh - 120px));
+  display: flex;
+  flex-direction: column;
+}
+
+.asset-panel .filter-popover .popover-body {
+  overflow-y: auto;
+}
+
+/* =========================================================
+   Asset pagination
+========================================================= */
+
+.asset-panel {
+  position: relative;
+  overflow: visible;
+}
+
+.asset-panel .toolbar {
+  position: relative;
+  z-index: 30;
+}
+
+.asset-panel .toolbar-actions {
+  position: relative;
+  z-index: 40;
+}
+
+.asset-panel .toolbar-popover {
+  z-index: 1000;
+}
+
+.asset-panel .table-wrap {
+  position: relative;
+  z-index: 1;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.table-footer-info {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.page-size-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.page-size-control select {
+  height: 28px;
+  padding: 0 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-raised);
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+}
+
+.page-size-control select:focus {
+  border-color: var(--accent);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pagination button {
+  width: 28px;
+  height: 28px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.pagination button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--panel-raised);
+}
+
+.pagination button.current {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.pagination button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+@media (max-width: 700px) {
+  .table-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .table-footer-info {
+    flex-wrap: wrap;
+  }
+
+  .pagination {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
 .panel-heading select { padding: 7px 10px; }
 .text-button { padding: 3px 0; display: inline-flex; align-items: center; gap: 5px; border: 0; color: #77b1fb; background: transparent; font-size: 11px; }
 .chart-legend { padding: 0 20px; display: flex; gap: 17px; color: #8392a3; font-size: 10px; }.chart-legend span { display: flex; align-items: center; gap: 5px; }.chart-legend i { width: 7px; height: 7px; display: inline-block; border-radius: 50%; }.legend-blue { background: #5f9df3; }.legend-mint { background: #5ad2ad; }
@@ -1029,3 +1194,194 @@ h3 { color: #eef4fb; font-size: 14px; }
 @media (max-width: 1100px) { .stat-grid { grid-template-columns: repeat(2, 1fr); }.dashboard-grid, .bottom-grid { grid-template-columns: 1fr; }.content { padding: 30px 26px 50px; } }
 @media (max-width: 760px) { .sidebar { width: 76px; }.sidebar .brand { padding: 0 21px; }.sidebar .brand-name, .sidebar .collapse-button, .sidebar .workspace-select > div:not(.workspace-avatar), .sidebar .workspace-select > svg, .sidebar .nav-label, .sidebar .nav-item span, .sidebar .nav-item b, .sidebar .user-mini > div:not(.avatar), .sidebar .user-mini > button { display: none; }.main, .main-expanded { margin-left: 76px; }.topbar { padding: 0 18px; }.help-button { display: none; }.global-search { width: 52vw; }.content { padding: 26px 16px 42px; }.page-header { align-items: flex-start; flex-direction: column; }.page-header .button { width: 100%; }.stat-grid { gap: 10px; }.stat-card { padding: 14px; }.stat-copy strong { font-size: 21px; }.stat-copy small { font-size: 9px; }.toolbar { align-items: stretch; flex-direction: column; }.search-field { max-width: none; }.toolbar-actions { margin-left: 0; }.management-grid, .report-grid { grid-template-columns: 1fr; }.report-filter { align-items: flex-start; flex-direction: column; }.report-controls { width: 100%; flex-wrap: wrap; }.report-controls select { flex: 1; min-width: 130px; }.procurement-banner { align-items: flex-start; flex-wrap: wrap; }.procurement-banner .button { width: 100%; }.form-grid { grid-template-columns: 1fr; }.full-field, .form-note { grid-column: auto; }.detail-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 460px) { .topbar { height: 62px; }.topbar-avatar { display: none; }.global-search { width: 100%; }.topbar-actions { gap: 8px; }.stat-grid { grid-template-columns: 1fr; }.detail-grid { grid-template-columns: 1fr; } }
+
+
+/* =========================================================
+   Assets toolbar menus
+========================================================= */
+
+.toolbar-menu-wrapper {
+  position: relative;
+}
+
+.filter-button,
+.icon-button {
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.filter-button.active,
+.icon-button.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.filter-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.filter-button > span {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #08111c;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.toolbar-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+}
+
+.filter-popover {
+  width: 340px;
+}
+
+.more-popover {
+  width: 210px;
+  padding: 6px;
+}
+
+.popover-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.popover-header > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.popover-header strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.popover-header span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.popover-close {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.popover-close:hover {
+  background: var(--panel-raised);
+  color: var(--text);
+}
+
+.popover-body {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.filter-field {
+  display: grid;
+  gap: 6px;
+}
+
+.filter-field > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.filter-field select {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel-raised);
+  color: var(--text);
+  outline: none;
+}
+
+.filter-field select:focus {
+  border-color: var(--accent);
+}
+
+.popover-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.text-button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.text-button:hover {
+  color: var(--text);
+}
+
+.popover-action {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 11px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+}
+
+.popover-action:hover {
+  background: var(--panel-raised);
+}
+
+.popover-action svg {
+  color: var(--muted);
+}
+
+.detail-loading {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
