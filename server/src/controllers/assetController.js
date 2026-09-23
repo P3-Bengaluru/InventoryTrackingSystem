@@ -3,8 +3,16 @@ const { paginate } = require('../utils/paginate');
 const assetService = require('../services/assetService');
 
 const list = asyncHandler(async (req, res) => {
-  const query = assetService.getAll(req.query);
+  const query = assetService.getAllQuery(req.query);
   const result = await paginate(query, req);
+  // Enhance the paginated data with location_path
+  if (result.data && result.data.length > 0) {
+    await Promise.all(
+      result.data.map(async (asset) => {
+        asset.location_path = await assetService.getLocationFullPath(asset.location_id);
+      })
+    );
+  }
   res.json(result);
 });
 

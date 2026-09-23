@@ -14,18 +14,17 @@ import {
   RotateCcw,
   Search,
   ShieldCheck,
-  X,
 } from 'lucide-react';
 import { Badge, Button, EmptyState, Info, Modal, PageHeader } from '../components/ui';
 
-const ICON_MAP = {
-  Laptop: Laptop,
-  Monitor: Monitor,
-  Server: Server,
-  Smartphone: Smartphone,
-  FileText: FileText,
-  // default fallback
-  default: Laptop,
+const getIconForCategory = (category) => {
+  if (!category) return Laptop;
+  const lower = category.toLowerCase();
+  if (lower.includes('laptop')) return Laptop;
+  if (lower.includes('monitor')) return Monitor;
+  if (lower.includes('server')) return Server;
+  if (lower.includes('smartphone') || lower.includes('mobile')) return Smartphone;
+  return FileText;
 };
 
 export default function Assets({ notify }) {
@@ -54,7 +53,7 @@ export default function Assets({ notify }) {
     fetchAssets();
   }, [notify]);
 
-  const filteredAssets = useMemo(() => assets.filter((asset) => (filter === 'All assets' || asset.status === filter || asset.type === filter) && `${asset.number} ${asset.name} ${asset.category} ${asset.assignee}`.toLowerCase().includes(search.toLowerCase())), [assets, filter, search]);
+  const filteredAssets = useMemo(() => assets.filter((asset) => (filter === 'All assets' || asset.status === filter || asset.category_name === filter) && `${asset.number} ${asset.name} ${asset.category} ${asset.assignee}`.toLowerCase().includes(search.toLowerCase())), [assets, filter, search]);
 
   const addAsset = async (event) => {
     event.preventDefault();
@@ -142,43 +141,45 @@ export default function Assets({ notify }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAssets.map((asset) => (
-                    <tr
-                      key={asset.id}
-                      onClick={() => setSelectedAsset(asset)}
-                    >
-                      <td>
-                        <div className="asset-cell">
-                          <div className="asset-thumb">
-                            const Icon = ICON_MAP[asset.icon] || ICON_MAP.default;
-                            <Icon size={17} />
+                  {filteredAssets.map((asset) => {
+                    const Icon = getIconForCategory(asset.category_name);
+                    return (
+                      <tr
+                        key={asset.id}
+                        onClick={() => setSelectedAsset(asset)}
+                      >
+                        <td>
+                          <div className="asset-cell">
+                            <div className="asset-thumb">
+                              <Icon size={17} />
+                            </div>
+                            <div>
+                              <strong className="mono">{asset.number}</strong>
+                              <span>{asset.name}</span>
+                            </div>
                           </div>
-                          <div>
-                            <strong className="mono">{asset.number}</strong>
-                            <span>{asset.name}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td>{asset.category}</td>
-                      <td>
-                        <Badge>{asset.status}</Badge>
-                      </td>
-                      <td>{asset.assignee}</td>
-                      <td className="muted-cell">{asset.location}</td>
-                      <td>{asset.warranty}</td>
-                      <td>
-                        <button
-                          className="row-action"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedAsset(asset);
-                          }}
-                        >
-                          <MoreHorizontal size={17} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td>{asset.category_name}</td>
+                        <td>
+                          <Badge>{asset.status}</Badge>
+                        </td>
+                        <td>{asset.assignee}</td>
+                        <td className="muted-cell">{asset.location}</td>
+                        <td>{asset.warranty}</td>
+                        <td>
+                          <button
+                            className="row-action"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedAsset(asset);
+                            }}
+                          >
+                            <MoreHorizontal size={17} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               {filteredAssets.length === 0 && (
@@ -253,7 +254,7 @@ export default function Assets({ notify }) {
 }
 
 function AssetDetail({ asset, onClose }) {
-  const Icon = ICON_MAP[asset.icon] || ICON_MAP.default;
+  const Icon = getIconForCategory(asset.category_name);
   return (
     <Modal title={asset.name} onClose={onClose} wide>
       <div className="detail-top">
@@ -263,7 +264,7 @@ function AssetDetail({ asset, onClose }) {
         <div>
           <p className="mono accent-text">{asset.number}</p>
           <h3>{asset.name}</h3>
-          <p>{asset.category} · {asset.source}</p>
+          <p>{asset.category_name} · {asset.source}</p>
         </div>
         <Badge>{asset.status}</Badge>
       </div>

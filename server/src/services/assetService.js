@@ -39,14 +39,11 @@ function buildAssetQuery(filters = {}) {
       'u.name as assigned_to_name',
       'u.employee_id as assigned_to_emp_id',
       's.name as supplier_name',
-      'c.name as customer_name',
-      'c.customer_code as customer_code'
     )
     .leftJoin('categories', 'assets.category_id', 'categories.id')
     .leftJoin('locations as l', 'assets.location_id', 'l.id')
     .leftJoin('users as u', 'assets.assigned_to', 'u.id')
     .leftJoin('suppliers as s', 'assets.supplier_id', 's.id')
-    .leftJoin('customers as c', 'assets.customer_id', 'c.id')
     .where('assets.is_active', true);
 
   if (filters.search) {
@@ -61,8 +58,6 @@ function buildAssetQuery(filters = {}) {
   if (filters.category_id) query.andWhere({ 'assets.category_id': filters.category_id });
   if (filters.location_id) query.andWhere({ 'assets.location_id': filters.location_id });
   if (filters.supplier_id) query.andWhere({ 'assets.supplier_id': filters.supplier_id });
-  if (filters.customer_id) query.andWhere({ 'assets.customer_id': filters.customer_id });
-  if (filters.is_customer_provided === 'true') query.andWhereNotNull('assets.customer_id');
 
   const sortBy = filters.sort_by || 'created_at';
   const sortOrder = filters.sort_order === 'asc' ? 'asc' : 'desc';
@@ -78,8 +73,12 @@ function buildAssetQuery(filters = {}) {
   return query;
 }
 
+function getAllQuery(filters = {}) {
+  return buildAssetQuery(filters);
+}
+
 async function getAll(filters = {}) {
-  const rows = await buildAssetQuery(filters);
+  const rows = await getAllQuery(filters);
   for (const r of rows) {
     // eslint-disable-next-line no-await-in-loop
     r.location_path = await getLocationFullPath(r.location_id);
@@ -97,15 +96,11 @@ async function getById(id) {
       'u.name as assigned_to_name',
       'u.employee_id as assigned_to_emp_id',
       's.name as supplier_name',
-      'c.name as customer_name',
-      'c.customer_code as customer_code',
-      'c.contact_person as customer_contact_person'
     )
     .leftJoin('categories', 'assets.category_id', 'categories.id')
     .leftJoin('locations as l', 'assets.location_id', 'l.id')
     .leftJoin('users as u', 'assets.assigned_to', 'u.id')
     .leftJoin('suppliers as s', 'assets.supplier_id', 's.id')
-    .leftJoin('customers as c', 'assets.customer_id', 'c.id')
     .where({ 'assets.id': id })
     .first();
   if (!asset) throw new AppError('Asset not found', 404);
@@ -132,11 +127,9 @@ async function getByQrToken(token) {
       'assets.assigned_to',
       'categories.name as category_name',
       'u.name as assigned_to_name',
-      'c.name as customer_name'
     )
     .leftJoin('categories', 'assets.category_id', 'categories.id')
     .leftJoin('users as u', 'assets.assigned_to', 'u.id')
-    .leftJoin('customers as c', 'assets.customer_id', 'c.id')
     .where({ 'assets.qr_token': token, 'assets.is_active': true })
     .first();
   if (!asset) throw new AppError('Asset not found', 404);
@@ -434,6 +427,7 @@ async function getMine(userId) {
 
 module.exports = {
   getAll,
+  getAllQuery,
   getById,
   getByQrToken,
   create,
@@ -448,4 +442,5 @@ module.exports = {
   generateAssetNumber,
   STATUS_LABELS,
   VALID_STATUSES,
+  getLocationFullPath,
 };

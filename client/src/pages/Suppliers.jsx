@@ -148,8 +148,9 @@ function SupplierForm({ editingSupplier, onClose, onSaved, notify }) {
         </div>
 
         <div className="modal-actions">
+          {/* // todo: add some padding around the buttons */}
           <Button type="button" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button type="submit" icon={Plus} disabled={saving}>// todo: add some padding around the buttons
+          <Button type="submit" icon={Plus} disabled={saving}>
             {saving ? (editingSupplier ? 'Updating...' : 'Creating...') : (editingSupplier ? 'Update supplier' : 'Create supplier')}
           </Button>
         </div>

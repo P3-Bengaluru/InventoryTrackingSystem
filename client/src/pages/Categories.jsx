@@ -226,8 +226,8 @@ function CategoryForm({ categories, editingCategory, onClose, onSaved, notify })
             </div>
           </div>
         </div>
-
-        <div className="modal-actions p-2"> // todo: add some padding around the buttons
+{/* // todo: add some padding around the buttons */}
+        <div className="modal-actions p-2"> 
           <Button type="button" onClick={onClose}>
             Cancel
           </Button>

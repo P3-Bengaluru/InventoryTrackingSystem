@@ -86,6 +86,158 @@ exports.seed = async function (knex) {
     .onConflict(['name', 'parent_id'])
     .ignore();
 
+  // ── Locations ─────────────────────────────────────────────────────
+  const getOrCreateLocation = async ({ name, parent_id = null, level, code }) => {
+    let location = await knex("locations").where({ name, parent_id }).first();
+    if (!location) {
+      [location] = await knex("locations").insert({ name, parent_id, level, code }).returning("*");
+    }
+    return location;
+  };
+
+  const bangalore = await getOrCreateLocation({ name: "Bangalore", level: 1, code: "BLR" });
+  const pune = await getOrCreateLocation({ name: "Pune", level: 1, code: "PUN" });
+  const bangaloreEngineering = await getOrCreateLocation({ name: "Engineering", parent_id: bangalore.id, level: 2, code: "ENG-BLR" });
+  const puneEngineering = await getOrCreateLocation({ name: "Engineering", parent_id: pune.id, level: 2, code: "ENG-PUN" });
+  await getOrCreateLocation({ name: "Project Alpha", parent_id: bangaloreEngineering.id, level: 3, code: "PRJ-ALPHA" });
+  await getOrCreateLocation({ name: "Project Beta", parent_id: puneEngineering.id, level: 3, code: "PRJ-BETA" });
+  await getOrCreateLocation({ name: "Common Area", parent_id: bangaloreEngineering.id, level: 3, code: "CMN-ENG-BLR" });
+
+  // ── Suppliers ─────────────────────────────────────────────────────
+  await knex('suppliers')
+    .insert([
+      {
+        name: 'Dell Technologies India',
+        contact_person: 'Rakesh Menon',
+        email: 'sales@dell-partner.example.com',
+        phone: '+91-80-4000-1000',
+        city: 'Bangalore',
+        website: 'https://www.dell.com/en-in',
+        payment_terms: 'Net 30',
+      },
+      {
+        name: 'Apple India Reseller',
+        contact_person: 'Divya Shah',
+        email: 'orders@apple-reseller.example.com',
+        phone: '+91-80-4000-2000',
+        city: 'Bangalore',
+        website: 'https://www.apple.com/in',
+        payment_terms: 'Net 15',
+      },
+      {
+        name: 'HP Enterprise Solutions',
+        contact_person: 'Suresh Iyer',
+        email: 'b2b@hp-partner.example.com',
+        phone: '+91-20-4000-3000',
+        city: 'Pune',
+        website: 'https://www.hp.com/in-en',
+        payment_terms: 'Net 30',
+      },
+    ])
+    .onConflict('name')
+    .ignore();
+
+  const dell = await knex('suppliers').where({ name: 'Dell Technologies India' }).first();
+  const apple = await knex('suppliers').where({ name: 'Apple India Reseller' }).first();
+  const hp = await knex('suppliers').where({ name: 'HP Enterprise Solutions' }).first();
+
+  // ── Sample assets ─────────────────────────────────────────────────
+  const winLaptops = await knex('categories').where({ name: 'Windows Laptops', parent_id: laptops.id }).first();
+  const macbooks = await knex('categories').where({ name: 'MacBooks', parent_id: laptops.id }).first();
+  const desktops = await knex('categories').where({ name: 'Desktops', parent_id: hw.id }).first();
+  const monitors = await knex('categories').where({ name: 'Monitors & Displays', parent_id: hw.id }).first();
+  const mobileDevices = await knex('categories').where({ name: 'Mobile Devices', parent_id: hw.id }).first();
+
+  const projectAlpha = await knex('locations').where({ name: 'Project Alpha', code: 'PRJ-ALPHA' }).first();
+  const projectBeta = await knex('locations').where({ name: 'Project Beta', code: 'PRJ-BETA' }).first();
+  const commonArea = await knex('locations').where({ name: 'Common Area', code: 'CMN-ENG-BLR' }).first();
+
+  await knex('assets')
+    .insert([
+      {
+        name: 'Dell Latitude 5440',
+        asset_tag: 'AST-0001',
+        serial_number: 'DL5440-BLR-0001',
+        brand: 'Dell',
+        model: 'Latitude 5440',
+        specifications: JSON.stringify({ ram: '16GB', cpu: 'i7-1355U', storage: '512GB SSD' }),
+        category_id: winLaptops.id,
+        location_id: projectAlpha.id,
+        supplier_id: dell.id,
+        purchase_date: '2025-11-10',
+        purchase_price: 92000.0,
+        invoice_number: 'INV-DELL-2025-1187',
+        warranty_expiry: '2028-11-09',
+        status: 'available',
+      },
+      {
+        name: 'MacBook Pro 14" M3',
+        asset_tag: 'AST-0002',
+        serial_number: 'MBP14M3-BLR-0002',
+        brand: 'Apple',
+        model: 'MacBook Pro 14 (M3)',
+        specifications: JSON.stringify({ ram: '18GB', cpu: 'Apple M3', storage: '512GB SSD' }),
+        category_id: macbooks.id,
+        location_id: projectAlpha.id,
+        supplier_id: apple.id,
+        purchase_date: '2026-01-15',
+        purchase_price: 189900.0,
+        invoice_number: 'INV-APL-2026-0342',
+        warranty_expiry: '2027-01-14',
+        status: 'available',
+      },
+      {
+        name: 'HP EliteDesk 800 G9',
+        asset_tag: 'AST-0003',
+        serial_number: 'HPED800-BLR-0003',
+        brand: 'HP',
+        model: 'EliteDesk 800 G9',
+        specifications: JSON.stringify({ ram: '16GB', cpu: 'i5-13500', storage: '256GB SSD' }),
+        category_id: desktops.id,
+        location_id: projectBeta.id,
+        supplier_id: hp.id,
+        purchase_date: '2025-08-22',
+        purchase_price: 68000.0,
+        invoice_number: 'INV-HP-2025-0765',
+        warranty_expiry: '2028-08-21',
+        status: 'available',
+      },
+      {
+        name: 'Dell UltraSharp U2724D',
+        asset_tag: 'AST-0004',
+        serial_number: 'DLU2724D-BLR-0004',
+        brand: 'Dell',
+        model: 'UltraSharp U2724D',
+        specifications: JSON.stringify({ size: '27in', resolution: '2560x1440' }),
+        category_id: monitors.id,
+        location_id: commonArea.id,
+        supplier_id: dell.id,
+        purchase_date: '2025-08-22',
+        purchase_price: 32000.0,
+        invoice_number: 'INV-DELL-2025-0891',
+        warranty_expiry: '2028-08-21',
+        status: 'available',
+      },
+      {
+        name: 'iPhone 15 (Pool Device)',
+        asset_tag: 'AST-0005',
+        serial_number: 'IP15-BLR-0005',
+        brand: 'Apple',
+        model: 'iPhone 15',
+        specifications: JSON.stringify({ storage: '128GB', color: 'Black' }),
+        category_id: mobileDevices.id,
+        location_id: commonArea.id,
+        supplier_id: apple.id,
+        purchase_date: '2026-02-01',
+        purchase_price: 69900.0,
+        invoice_number: 'INV-APL-2026-0501',
+        warranty_expiry: '2027-01-31',
+        status: 'available',
+      },
+    ])
+    .onConflict('serial_number')
+    .ignore();
+
   // ── Approval rules ────────────────────────────────────────────────
   const existingRules = await knex('approval_rules').count('id as count').first();
   if (Number(existingRules.count) === 0) {
