@@ -13,6 +13,7 @@ import Categories from './pages/Categories';
 import Locations from './pages/Location';
 import Suppliers from './pages/Suppliers';
 import Assignments from './pages/Assignments';
+import Reallocations from './pages/Reallocations';
 import { ClipboardList } from 'lucide-react';
 import LoginView from './pages/LoginView';
 import { useAuth } from './context/AuthContext';
@@ -42,15 +43,7 @@ export default function App() {
     dashboard: <Dashboard onNavigate={navigate} />,
     assets: <Assets notify={notify} />,
     assignments: <Assignments notify={notify} />,
-    reallocations: <WorkflowList
-      title="Reallocations"
-      eyebrow="Inventory / Reallocations"
-      description="Move assigned assets between people with a clear approval trail."
-      icon={GitBranch}
-      endpoint="reallocations"
-      actionLabel="Request reallocation"
-      onAction={() => notify('Reallocation request form opened.')}
-    />,
+    reallocations:<Reallocations notify={notify} />,
     procurement: <Procurement notify={notify} />,
     suppliers:<Suppliers notify={notify} />,
     categories:<Categories notify={notify} />,
