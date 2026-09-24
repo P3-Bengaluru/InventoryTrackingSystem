@@ -12,6 +12,7 @@ import People from './pages/People';
 import Categories from './pages/Categories';
 import Locations from './pages/Location';
 import Suppliers from './pages/Suppliers';
+import Assignments from './pages/Assignments';
 import { ClipboardList } from 'lucide-react';
 import LoginView from './pages/LoginView';
 import { useAuth } from './context/AuthContext';
@@ -40,15 +41,7 @@ export default function App() {
   const content = {
     dashboard: <Dashboard onNavigate={navigate} />,
     assets: <Assets notify={notify} />,
-    assignments: <WorkflowList
-      title="Assignments"
-      eyebrow="Inventory / Assignments"
-      description="Review checkouts, returns, and outstanding asset requests."
-      icon={ClipboardList}
-      endpoint="assignments"
-      actionLabel="New assignment"
-      onAction={() => notify('Assignment request form opened.')}
-    />,
+    assignments: <Assignments notify={notify} />,
     reallocations: <WorkflowList
       title="Reallocations"
       eyebrow="Inventory / Reallocations"
