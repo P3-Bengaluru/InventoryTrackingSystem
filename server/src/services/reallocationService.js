@@ -3,7 +3,7 @@ const { AppError } = require('../middleware/errorHandler');
 const { auditFromReq } = require('../utils/audit');
 const { createNotification } = require('../utils/notifications');
 
-async function getAll(filters = {}) {
+function getAll(filters = {}) {
   const query = db('reallocations')
     .select(
       'reallocations.*',
