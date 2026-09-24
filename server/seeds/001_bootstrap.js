@@ -5,6 +5,8 @@
  * Safe to re-run: every insert uses onConflict().merge()/ignore() equivalents.
  */
 exports.seed = async function (knex) {
+  const bcrypt = require('bcryptjs');
+  const defaultPasswordHash = bcrypt.hashSync('password', 12);
   // ── Users ─────────────────────────────────────────────────────────
   await knex('users')
     .insert([
@@ -12,7 +14,7 @@ exports.seed = async function (knex) {
         employee_id: '001',
         name: 'Admin User',
         email: 'admin@example.com',
-        password_hash: '$2b$10$KIXQJ1Z5Y6F8z5G9e1Z5Oe1Z5Oe1Z5Oe1Z5Oe1Z5Oe1Z5Oe1Z5Oe', // hashed 'password'
+        password_hash: defaultPasswordHash,
         role: 'admin',
         manager_id: null,
         department: 'Administration',
