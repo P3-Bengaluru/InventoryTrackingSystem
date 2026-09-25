@@ -3,7 +3,7 @@ const { paginate } = require('../utils/paginate');
 const reallocationService = require('../services/reallocationService');
 
 const list = asyncHandler(async (req, res) => {
-  const query = await reallocationService.getAll(req.query);
+  const query = reallocationService.getAll(req.query);
   const result = await paginate(query, req);
   res.json(result);
 });
