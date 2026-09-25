@@ -2,494 +2,344 @@ const { db } = require('../models/db');
 const { AppError } = require('../middleware/errorHandler');
 const { auditFromReq } = require('../utils/audit');
 const { createNotification } = require('../utils/notifications');
-const assetService = require('./assetService');
+const { isSelfApprovable, getMatchingTiers, buildApprovalRows } = require('../utils/approvalEngine');
+const notify = require('../utils/procurementNotifications');
 
-async function searchInventory({ item_name, category_id, specifications }) {
-  const results = { available: [], assigned: [], other: [], has_match: false };
+const TABLE = 'procurement_requests';
+const APPROVALS = 'procurement_approvals';
 
-  let query = db('assets')
-    .select(
-      'assets.id',
-      'assets.asset_number',
-      'assets.name',
-      'assets.status',
-      'assets.brand',
-      'assets.model',
-      'assets.serial_number',
-      'assets.specifications',
-      'categories.name as category_name',
-      'u.name as assigned_to_name'
-    )
-    .leftJoin('categories', 'assets.category_id', 'categories.id')
-    .leftJoin('users as u', 'assets.assigned_to', 'u.id')
-    .where('assets.is_active', true);
-
-  if (item_name) {
-    query.andWhere(function () {
-      this.whereILike('assets.name', `%${item_name}%`)
-        .orWhereILike('assets.brand', `%${item_name}%`)
-        .orWhereILike('assets.model', `%${item_name}%`);
-    });
-  }
-  if (category_id) query.andWhere({ 'assets.category_id': category_id });
-
-  const assets = await query.limit(50);
-
-  for (const asset of assets) {
-    let specsMatch = true;
-    if (specifications && typeof specifications === 'object') {
-      try {
-        const assetSpecs = typeof asset.specifications === 'string' ? JSON.parse(asset.specifications) : asset.specifications;
-        if (assetSpecs) {
-          for (const [key, val] of Object.entries(specifications)) {
-            if (assetSpecs[key] && String(assetSpecs[key]).toLowerCase() !== String(val).toLowerCase()) {
-              specsMatch = false;
-              break;
-            }
-          }
-        }
-      } catch {
-        specsMatch = true;
-      }
-    }
-    if (!specsMatch) continue;
-
-    if (asset.status === 'available') {
-      results.available.push({
-        id: asset.id,
-        asset_number: asset.asset_number,
-        name: asset.name,
-        brand: asset.brand,
-        model: asset.model,
-        status: asset.status,
-        category_name: asset.category_name,
-      });
-    } else if (asset.status === 'assigned') {
-      results.assigned.push({
-        id: asset.id,
-        asset_number: asset.asset_number,
-        name: asset.name,
-        brand: asset.brand,
-        model: asset.model,
-        status: asset.status,
-        category_name: asset.category_name,
-        assignee_first_name: asset.assigned_to_name ? asset.assigned_to_name.split(' ')[0] : null,
-      });
-    } else {
-      results.other.push({
-        id: asset.id,
-        asset_number: asset.asset_number,
-        name: asset.name,
-        status: asset.status,
-        category_name: asset.category_name,
-      });
-    }
-  }
-
-  results.has_match = results.available.length > 0 || results.assigned.length > 0 || results.other.length > 0;
-  return results;
+function notFound(message) {
+  const err = new Error(message);
+  err.status = 404;
+  return err;
 }
 
-async function getAll(filters = {}, user) {
-  const query = db('procurement_requests')
-    .select(
-      'procurement_requests.*',
-      'u.name as requested_by_name',
-      'u.employee_id as requested_by_emp_id',
-      'c.name as category_name',
-      'l.name as location_name',
-      's.name as supplier_name',
-      'a.asset_number as created_asset_number'
-    )
-    .leftJoin('users as u', 'procurement_requests.requested_by', 'u.id')
-    .leftJoin('categories as c', 'procurement_requests.category_id', 'c.id')
-    .leftJoin('locations as l', 'procurement_requests.location_id', 'l.id')
-    .leftJoin('suppliers as s', 'procurement_requests.supplier_id', 's.id')
-    .leftJoin('assets as a', 'procurement_requests.asset_id_created', 'a.id');
+function badState(message) {
+  const err = new Error(message);
+  err.status = 409;
+  return err;
+}
 
-  if (user.role === 'engineer') {
-    query.andWhere({ 'procurement_requests.requested_by': user.id });
+function forbidden(message) {
+  const err = new Error(message);
+  err.status = 403;
+  return err;
+}
+
+// ── Reads ────────────────────────────────────────────────────────────
+
+// Engineers only ever see their own requests. Every other role sees
+// the full list — narrow further with req.query if you need tighter
+// per-role scoping later.
+async function getAll(req) {
+  const { role, id: userId } = req.user;
+  const query = db(TABLE).select('*').orderBy('created_at', 'desc');
+
+  if (role === 'engineer') {
+    query.where({ requested_by: userId });
+  }
+  if (req.query.status) {
+    query.where({ status: req.query.status });
   }
 
-  if (filters.status) query.andWhere({ 'procurement_requests.status': filters.status });
-  if (filters.priority) query.andWhere({ 'procurement_requests.priority': filters.priority });
-
-  query.orderBy('procurement_requests.created_at', 'desc');
   return query;
 }
 
 async function getById(id) {
-  const pr = await db('procurement_requests')
-    .select(
-      'procurement_requests.*',
-      'u.name as requested_by_name',
-      'u.employee_id as requested_by_emp_id',
-      'c.name as category_name',
-      'l.name as location_name',
-      's.name as supplier_name',
-      'a.asset_number as created_asset_number'
-    )
-    .leftJoin('users as u', 'procurement_requests.requested_by', 'u.id')
-    .leftJoin('categories as c', 'procurement_requests.category_id', 'c.id')
-    .leftJoin('locations as l', 'procurement_requests.location_id', 'l.id')
-    .leftJoin('suppliers as s', 'procurement_requests.supplier_id', 's.id')
-    .leftJoin('assets as a', 'procurement_requests.asset_id_created', 'a.id')
-    .where({ 'procurement_requests.id': id })
-    .first();
-  if (!pr) throw new AppError('Procurement request not found', 404);
+  const request = await db(TABLE).where({ id }).first();
+  if (!request) throw notFound('Procurement request not found');
 
-  const approvals = await db('procurement_approvals')
-    .select(
-      'procurement_approvals.*',
-      'u.name as approver_name'
-    )
-    .leftJoin('users as u', 'procurement_approvals.approver_id', 'u.id')
-    .where({ procurement_id: id })
-    .orderBy('level', 'asc');
+  const approvals = await db(APPROVALS).where({ procurement_id: id }).orderBy('level', 'asc');
 
-  pr.approvals = approvals;
-  return pr;
+  return { ...request, approvals };
 }
 
-async function create(data, req) {
-  const [pr] = await db('procurement_requests')
-    .insert({
-      requested_by: req.user.id,
-      department: data.department || null,
-      project: data.project || null,
-      location_id: data.location_id || null,
-      request_type: data.request_type || 'new_purchase',
-      item_name: data.item_name,
-      category_id: data.category_id || null,
-      specifications: data.specifications ? JSON.stringify(data.specifications) : null,
-      quantity: data.quantity || 1,
-      justification: data.justification,
-      estimated_cost: data.estimated_cost || null,
-      quoted_cost: data.quoted_cost || null,
-      currency: data.currency || 'INR',
-      status: 'draft',
-      priority: data.priority || 'normal',
-      notes: data.notes || null,
-      created_at: new Date(),
-      updated_at: new Date(),
-    })
-    .returning('id');
-
-  const created = await getById(pr.id);
-  if (req) {
-    await auditFromReq(req, {
-      log_type: 'audit',
-      action: 'PROCUREMENT_RAISED',
-      entity_type: 'procurement',
-      entity_id: pr.id,
-      after_value: created,
-    });
-  }
-  return created;
+// The approver inbox: every pending step currently sitting with me,
+// regardless of which procurement request it belongs to.
+async function getMyPendingApprovals(userId) {
+  return db(APPROVALS)
+    .join(TABLE, `${TABLE}.id`, `${APPROVALS}.procurement_id`)
+    .where(`${APPROVALS}.approver_id`, userId)
+    .andWhere(`${APPROVALS}.status`, 'pending')
+    .select(
+      `${APPROVALS}.id as approval_id`,
+      `${APPROVALS}.level`,
+      `${APPROVALS}.approver_role`,
+      `${TABLE}.id as procurement_id`,
+      `${TABLE}.item_name`,
+      `${TABLE}.estimated_cost`,
+      `${TABLE}.justification`,
+      `${TABLE}.requested_by`
+    )
+    .orderBy(`${TABLE}.created_at`, 'asc');
 }
 
-async function submit(id, req) {
-  const pr = await db('procurement_requests').where({ id }).first();
-  if (!pr) throw new AppError('Procurement request not found', 404);
-  if (pr.status !== 'draft') throw new AppError('Request is not in draft status', 400);
+async function getHistory(id) {
+  return db('activity_logs')
+    .where({ entity_type: 'procurement', entity_id: id })
+    .orderBy('created_at', 'desc');
+}
 
-  const user = await db('users').where({ id: pr.requested_by }).first();
-  const cost = parseFloat(pr.estimated_cost) || 0;
+// ── Create: inventory match + tier lookup + approval chain ──────────
 
-  if (user.role === 'engineer' && cost > 0 && cost <= parseFloat(user.self_approve_limit || 0)) {
-    await db('procurement_requests').where({ id }).update({
-      status: 'self_approved',
-      submitted_at: new Date(),
-      updated_at: new Date(),
-    });
-    const updated = await getById(id);
-    if (req) {
-      await auditFromReq(req, {
-        log_type: 'audit',
-        action: 'PROCUREMENT_APPROVED',
-        entity_type: 'procurement',
-        entity_id: id,
-        description: 'Self-approved',
-      });
-    }
-    return updated;
-  }
+async function create(payload, requestedBy) {
+  return db.transaction(async (trx) => {
+    let matchedAssetId = null;
+    let matchedNotes = null;
 
-  const rules = await db('approval_rules')
-    .where({ is_active: true })
-    .where(function () {
-      this.whereNull('max_amount').orWhere('max_amount', '>=', cost);
-    })
-    .where('min_amount', '<=', cost)
-    .orderBy('approver_level', 'asc');
+    // If they're asking for something that might already be in
+    // inventory, look for an available match before assuming a new
+    // purchase is needed.
+    if (payload.request_type === 'existing_asset' && payload.category_id) {
+      const candidate = await trx('assets')
+        .where({ category_id: payload.category_id, status: 'available' })
+        .first();
 
-  if (rules.length === 0) {
-    await db('procurement_requests').where({ id }).update({
-      status: 'approved',
-      submitted_at: new Date(),
-      updated_at: new Date(),
-    });
-    const updated = await getById(id);
-    if (req) {
-      await auditFromReq(req, {
-        log_type: 'audit',
-        action: 'PROCUREMENT_APPROVED',
-        entity_type: 'procurement',
-        entity_id: id,
-        description: 'No approval rules matched, auto-approved',
-      });
-    }
-    return updated;
-  }
-
-  const approvalRows = [];
-  for (const rule of rules) {
-    let approverId = null;
-    if (rule.approver_role === 'manager' && user.manager_id) {
-      approverId = user.manager_id;
-    }
-    approvalRows.push({
-      procurement_id: id,
-      approver_id: approverId,
-      approver_role: rule.approver_role,
-      level: rule.approver_level,
-      status: 'pending',
-      created_at: new Date(),
-    });
-
-    if (approverId) {
-      await createNotification({
-        userId: approverId,
-        type: 'procurement_submitted',
-        title: 'Procurement Approval Needed',
-        message: `Procurement request for "${pr.item_name}" needs your approval.`,
-        entityType: 'procurement',
-        entityId: id,
-      });
-    } else {
-      const approvers = await db('users').where({ role: rule.approver_role, is_active: true }).select('id');
-      for (const a of approvers) {
-        await createNotification({
-          userId: a.id,
-          type: 'procurement_submitted',
-          title: 'Procurement Approval Needed',
-          message: `Procurement request for "${pr.item_name}" needs approval.`,
-          entityType: 'procurement',
-          entityId: id,
-        });
+      if (candidate) {
+        matchedAssetId = candidate.id;
+        matchedNotes = `Found ${candidate.asset_number} (available) in inventory.`;
+      } else {
+        matchedNotes = 'No matching available asset found — will be treated as a new purchase if approved.';
       }
     }
-  }
 
-  await db('procurement_approvals').insert(approvalRows);
-  await db('procurement_requests').where({ id }).update({
-    status: 'pending_approval',
-    submitted_at: new Date(),
-    updated_at: new Date(),
-  });
+    const requester = await trx('users').where({ id: requestedBy }).first();
+    if (!requester) throw notFound('Requesting user not found');
 
-  const updated = await getById(id);
-  if (req) {
-    await auditFromReq(req, {
-      log_type: 'audit',
-      action: 'PROCUREMENT_RAISED',
-      entity_type: 'procurement',
-      entity_id: id,
-      description: 'Submitted for approval',
-    });
-  }
-  return updated;
-}
+    const [request] = await trx(TABLE)
+      .insert({
+        requested_by: requestedBy,
+        department: payload.department ?? requester.department,
+        project: payload.project,
+        location_id: payload.location_id,
+        request_type: payload.request_type,
+        item_name: payload.item_name,
+        category_id: payload.category_id,
+        specifications: payload.specifications ? JSON.stringify(payload.specifications) : null,
+        quantity: payload.quantity ?? 1,
+        justification: payload.justification,
+        estimated_cost: payload.estimated_cost,
+        currency: payload.currency ?? 'INR',
+        matched_asset_id: matchedAssetId,
+        matched_notes: matchedNotes,
+        status: 'submitted',
+        priority: payload.priority ?? 'normal',
+        submitted_at: trx.fn.now(),
+      })
+      .returning('*');
 
-async function action(id, { action: actionType, comments, rejection_reason }, req) {
-  const pr = await db('procurement_requests').where({ id }).first();
-  if (!pr) throw new AppError('Procurement request not found', 404);
-  if (pr.status !== 'pending_approval') throw new AppError('Request is not pending approval', 400);
+    // Below the requester's own self-approve limit — skip the
+    // approval chain entirely.
+    if (isSelfApprovable(requester.self_approve_limit, payload.estimated_cost)) {
+      await trx(TABLE)
+        .where({ id: request.id })
+        .update({ status: 'self_approved', approved_at: trx.fn.now(), updated_at: trx.fn.now() });
 
-  const approvals = await db('procurement_approvals')
-    .where({ procurement_id: id })
-    .orderBy('level', 'asc');
-
-  const currentApproval = approvals.find((a) => a.status === 'pending');
-  if (!currentApproval) throw new AppError('No pending approval found', 400);
-
-  const canApprove =
-    req.user.role === 'admin' ||
-    req.user.role === currentApproval.approver_role ||
-    currentApproval.approver_id === req.user.id;
-
-  if (!canApprove) throw new AppError('You are not the designated approver for this level', 403);
-
-  if (actionType === 'approve') {
-    await db('procurement_approvals').where({ id: currentApproval.id }).update({
-      status: 'approved',
-      comments: comments || null,
-      actioned_at: new Date(),
-    });
-
-    const remaining = approvals.filter((a) => a.status === 'pending' && a.id !== currentApproval.id);
-    if (remaining.length === 0) {
-      await db('procurement_requests').where({ id }).update({
-        status: 'approved',
-        approved_at: new Date(),
-        updated_at: new Date(),
-      });
-      await createNotification({
-        userId: pr.requested_by,
-        type: 'procurement_approved',
-        title: 'Procurement Approved',
-        message: `Your request for "${pr.item_name}" has been fully approved.`,
-        entityType: 'procurement',
-        entityId: id,
-      });
+      return getById(request.id);
     }
 
-    const updated = await getById(id);
-    if (req) {
-      await auditFromReq(req, {
-        log_type: 'audit',
-        action: 'PROCUREMENT_APPROVED',
-        entity_type: 'procurement',
-        entity_id: id,
-        after_value: updated,
-      });
+    // Otherwise, match against the budget tiers and build the
+    // approval chain.
+    const rules = await trx('approval_rules').where({ is_active: true });
+    const tiers = getMatchingTiers(rules, payload.estimated_cost);
+
+    if (tiers.length === 0) {
+      // No configured tier covers this amount — leave it in
+      // pending_approval for an admin to route manually.
+      await trx(TABLE).where({ id: request.id }).update({ status: 'pending_approval', updated_at: trx.fn.now() });
+      return getById(request.id);
     }
-    return updated;
-  } else if (actionType === 'reject') {
-    await db('procurement_approvals').where({ id: currentApproval.id }).update({
-      status: 'rejected',
-      comments: comments || null,
-      actioned_at: new Date(),
-    });
 
-    await db('procurement_requests').where({ id }).update({
-      status: 'rejected',
-      rejection_reason: rejection_reason || comments || null,
-      updated_at: new Date(),
-    });
-
-    await createNotification({
-      userId: pr.requested_by,
-      type: 'procurement_rejected',
-      title: 'Procurement Rejected',
-      message: `Your request for "${pr.item_name}" has been rejected.`,
-      entityType: 'procurement',
-      entityId: id,
-    });
-
-    const updated = await getById(id);
-    if (req) {
-      await auditFromReq(req, {
-        log_type: 'audit',
-        action: 'PROCUREMENT_REJECTED',
-        entity_type: 'procurement',
-        entity_id: id,
-        after_value: updated,
-      });
-    }
-    return updated;
-  }
-  throw new AppError('Invalid action', 400);
-}
-
-async function markOrdered(id, data, req) {
-  const pr = await db('procurement_requests').where({ id }).first();
-  if (!pr) throw new AppError('Procurement request not found', 404);
-  if (pr.status !== 'approved' && pr.status !== 'self_approved') throw new AppError('Request must be approved first', 400);
-
-  await db('procurement_requests').where({ id }).update({
-    status: 'ordered',
-    po_number: data.po_number || null,
-    expected_delivery: data.expected_delivery || null,
-    quoted_cost: data.quoted_cost || pr.quoted_cost,
-    supplier_id: data.supplier_id || pr.supplier_id,
-    supplier_quote_url: data.supplier_quote_url || null,
-    ordered_at: new Date(),
-    updated_at: new Date(),
-  });
-
-  await createNotification({
-    userId: pr.requested_by,
-    type: 'procurement_ordered',
-    title: 'Procurement Ordered',
-    message: `Your request for "${pr.item_name}" has been ordered.`,
-    entityType: 'procurement',
-    entityId: id,
-  });
-
-  const updated = await getById(id);
-  if (req) {
-    await auditFromReq(req, {
-      log_type: 'audit',
-      action: 'PROCUREMENT_ORDERED',
-      entity_type: 'procurement',
-      entity_id: id,
-      after_value: updated,
-    });
-  }
-  return updated;
-}
-
-async function markReceived(id, data, req) {
-  const pr = await db('procurement_requests').where({ id }).first();
-  if (!pr) throw new AppError('Procurement request not found', 404);
-  if (pr.status !== 'ordered') throw new AppError('Request must be ordered first', 400);
-
-  let assetIdCreated = data.asset_id_created || null;
-
-  if (!assetIdCreated && pr.category_id) {
-    const assetData = {
-      name: pr.item_name,
-      category_id: pr.category_id,
-      specifications: pr.specifications ? (typeof pr.specifications === 'string' ? JSON.parse(pr.specifications) : pr.specifications) : null,
-      supplier_id: pr.supplier_id || null,
-      purchase_date: new Date().toISOString().split('T')[0],
-      purchase_price: pr.quoted_cost || pr.estimated_cost || null,
-      invoice_number: pr.po_number || null,
-      status: 'available',
-      notes: `Created from procurement request ${pr.id}`,
+    // Simplest resolution: first active user holding that role.
+    // Swap this out for a department/manager-chain lookup if your
+    // org needs one approver per department rather than one globally.
+    const approverResolver = async (role) => {
+      const user = await trx('users').where({ role, is_active: true }).first();
+      return user ? user.id : null;
     };
-    const created = await assetService.create(assetData, req);
-    assetIdCreated = created.id;
+
+    const approvalRows = await buildApprovalRows(request.id, tiers, approverResolver);
+    await trx(APPROVALS).insert(approvalRows);
+
+    await trx(TABLE).where({ id: request.id }).update({ status: 'pending_approval', updated_at: trx.fn.now() });
+
+    const firstLevel = approvalRows.reduce((min, row) => (row.level < min.level ? row : min));
+    await notify.notifyNextApprover(firstLevel, request);
+
+    return getById(request.id);
+  });
+}
+
+// ── Approve / reject a single step in the chain ───────────────────────
+
+async function decideApproval(procurementId, approvalId, approverId, decision, comments) {
+  if (!['approved', 'rejected'].includes(decision)) {
+    throw badState('decision must be "approved" or "rejected"');
   }
 
-  await db('procurement_requests').where({ id }).update({
-    status: 'received',
-    actual_delivery: data.actual_delivery || new Date().toISOString().split('T')[0],
-    asset_id_created: assetIdCreated,
-    received_at: new Date(),
-    updated_at: new Date(),
-  });
+  return db.transaction(async (trx) => {
+    const approval = await trx(APPROVALS).where({ id: approvalId, procurement_id: procurementId }).first();
+    if (!approval) throw notFound('Approval step not found');
+    if (approval.approver_id !== approverId) {
+      throw forbidden('You are not the assigned approver for this step');
+    }
+    if (approval.status !== 'pending') {
+      throw badState('This approval step has already been actioned');
+    }
 
-  await createNotification({
-    userId: pr.requested_by,
-    type: 'procurement_received',
-    title: 'Procurement Received',
-    message: `Your request for "${pr.item_name}" has been received.`,
-    entityType: 'procurement',
-    entityId: id,
-  });
+    const request = await trx(TABLE).where({ id: procurementId }).first();
+    if (!request) throw notFound('Procurement request not found');
 
-  const updated = await getById(id);
-  if (req) {
-    await auditFromReq(req, {
-      log_type: 'audit',
-      action: 'PROCUREMENT_RECEIVED',
-      entity_type: 'procurement',
-      entity_id: id,
-      after_value: updated,
+    await trx(APPROVALS).where({ id: approvalId }).update({
+      status: decision,
+      comments,
+      actioned_at: trx.fn.now(),
     });
+
+    if (decision === 'rejected') {
+      // A rejection at any level kills the whole request — mark any
+      // still-pending levels as skipped rather than leaving them dangling.
+      await trx(APPROVALS)
+        .where({ procurement_id: procurementId, status: 'pending' })
+        .update({ status: 'skipped' });
+
+      await trx(TABLE).where({ id: procurementId }).update({
+        status: 'rejected',
+        rejection_reason: comments,
+        updated_at: trx.fn.now(),
+      });
+
+      await notify.notifyRequesterOfDecision(request.requested_by, procurementId, request.item_name, 'rejected');
+      return getById(procurementId);
+    }
+
+    // decision === 'approved' — activate the next level, if any.
+    const nextPending = await trx(APPROVALS)
+      .where({ procurement_id: procurementId, status: 'pending' })
+      .orderBy('level', 'asc')
+      .first();
+
+    if (nextPending) {
+      await notify.notifyNextApprover(nextPending, request);
+      return getById(procurementId);
+    }
+
+    // No more levels pending — fully approved.
+    await trx(TABLE).where({ id: procurementId }).update({
+      status: 'approved',
+      approved_at: trx.fn.now(),
+      updated_at: trx.fn.now(),
+    });
+
+    await notify.notifyRequesterOfDecision(request.requested_by, procurementId, request.item_name, 'approved');
+    await notify.notifyInventoryManagers(procurementId, request.item_name);
+
+    return getById(procurementId);
+  });
+}
+
+// ── Ordering + receiving ──────────────────────────────────────────────
+
+async function markOrdered(id, { supplier_id, po_number, quoted_cost, expected_delivery }) {
+  const request = await db(TABLE).where({ id }).first();
+  if (!request) throw notFound('Procurement request not found');
+  if (!['approved', 'self_approved'].includes(request.status)) {
+    throw badState(`Cannot order a request in status "${request.status}"`);
   }
-  return updated;
+
+  await db(TABLE)
+    .where({ id })
+    .update({
+      status: 'ordered',
+      supplier_id,
+      po_number,
+      quoted_cost,
+      expected_delivery,
+      ordered_at: db.fn.now(),
+      updated_at: db.fn.now(),
+    });
+
+  return getById(id);
+}
+
+async function markReceived(id) {
+  return db.transaction(async (trx) => {
+    const request = await trx(TABLE).where({ id }).first();
+    if (!request) throw notFound('Procurement request not found');
+    if (request.status !== 'ordered') {
+      throw badState(`Cannot receive a request in status "${request.status}"`);
+    }
+
+    let createdAsset = null;
+
+    // Existing-asset requests don't create a new asset on receipt —
+    // that flow goes through `reallocations` instead (transferring the
+    // already-matched asset to the requester), triggered separately
+    // once approved.
+    if (request.request_type === 'new_purchase') {
+      [createdAsset] = await trx('assets')
+        .insert({
+          name: request.item_name,
+          category_id: request.category_id,
+          location_id: request.location_id,
+          supplier_id: request.supplier_id,
+          specifications: request.specifications,
+          purchase_date: trx.fn.now(),
+          purchase_price: request.quoted_cost ?? request.estimated_cost,
+          invoice_number: request.po_number,
+          status: 'available',
+        })
+        .returning('*');
+    }
+
+    await trx(TABLE)
+      .where({ id })
+      .update({
+        status: 'received',
+        actual_delivery: trx.fn.now(),
+        asset_id_created: createdAsset ? createdAsset.id : null,
+        received_at: trx.fn.now(),
+        updated_at: trx.fn.now(),
+      });
+
+    if (createdAsset) {
+      await notify.notifyRequesterOfReceipt(
+        request.requested_by,
+        id,
+        request.item_name,
+        createdAsset.asset_number
+      );
+    }
+
+    return getById(id);
+  });
+}
+
+async function cancel(id, requestedBy) {
+  const request = await db(TABLE).where({ id }).first();
+  if (!request) throw notFound('Procurement request not found');
+  if (request.requested_by !== requestedBy) {
+    throw forbidden('Only the original requester can cancel this request');
+  }
+  if (!['draft', 'submitted', 'pending_approval'].includes(request.status)) {
+    throw badState(`Cannot cancel a request in status "${request.status}"`);
+  }
+
+  await db(APPROVALS).where({ procurement_id: id, status: 'pending' }).update({ status: 'skipped' });
+
+  await db(TABLE).where({ id }).update({ status: 'cancelled', updated_at: db.fn.now() });
+
+  return getById(id);
 }
 
 module.exports = {
-  searchInventory,
   getAll,
   getById,
+  getMyPendingApprovals,
+  getHistory,
   create,
-  submit,
-  action,
+  decideApproval,
   markOrdered,
   markReceived,
+  cancel,
 };
